@@ -1,0 +1,171 @@
+---
+title: "Impact of Population Growth on Housing in Denver"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+#### By: Lance Barto 
+<br>
+
+#### Population Growth
+
+```{r include=FALSE}
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(plotly)
+library(gganimate)
+library(gridExtra)
+
+popData <- read.csv('denverPopulation.csv')
+
+popData <- melt(popData, id.vars='Year')
+
+popData <- na.omit(popData)
+
+popData$value <- as.numeric(gsub(",", "", popData$value))
+
+head(popData)
+```
+
+Over the past few decades, the population throughout the metro area has grown substantially.
+Here is a plot that shows us some of that growth broken down by county. 
+
+```{r echo=FALSE}
+p <- popData %>%
+      filter(Year <= 2019 & Year != 'X' & Year >= 2006) 
+
+p <- popData %>%
+  filter(Year <= 2019 & Year >= 2006) %>%
+  ggplot(aes(x = Year, y = value, fill = variable)) +
+  scale_fill_brewer(palette = 'Set1') + 
+  geom_col(position = 'stack', alpha = .8) + 
+  scale_y_continuous(breaks = (c(0, 5, 10, 15, 20, 25, 30, 35) * 100000), 
+                     labels = c(0, .5, 1, 1.5, 2, 2.5, 3, 3.5)) +
+  scale_x_continuous(breaks = c(2006:2019)) +
+  labs(title = 'Population Growth in the Denver Metropolitan Area by county') +
+  ylab('Population (millions)') +
+  theme(legend.title = element_blank(), 
+        axis.text.x = element_text(angle = 45),
+        panel.border = element_rect(colour = "black", 
+                                              fill = NA, size = 1)) 
+  
+ggplotly(p)
+```
+
+As we can see, there are not any obvious outliers in terms of growth, with exception of Boulder county, which has put in place annual growth limites. While each individual county's growth doesn't seem particularly substantial, the aggregate growth is immense. During this growth period, one of the sectors which has been influenced the most has been housing. The cost of both rental units, and teh value of purchased (and appraised) properties have risen astronomically. Housing prices in Colorado, and the Denver area in particular, have begun to reside amongst the most expensive cities in the country. 
+
+<br>
+
+#### First we'll look at how much prices have risen in market of homes for sale
+* These values contain both houses sold, and appraisals reported.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dataSold <- read.csv('purchaseAppraisalDenver.csv', header = FALSE)
+
+colnames(dataSold) <- c('Quarter', 'Value')
+
+dataSold$Value <- dataSold$Value * 1000
+
+dataSold$Quarter <- seq(2001, 2018.75, .25)
+
+dataSold <- dataSold %>%
+              filter(Quarter >= 2006)
+
+plot2 <- ggplot(data = dataSold, aes(x = Quarter, y = Value)) +
+           geom_line(alpha = .5) +
+           geom_point(size = .5, alpha = .5) +
+           labs(title = 'Quarterly Indexed Home Value Over in the Greater Denver Metro Area',
+           subtitle = '(value of homes sold, and appraised)') +
+           ylab('Value (thousands $)') +
+           xlab('Year') +
+           theme(axis.text.x = element_text(angle = 45)) +
+           scale_x_continuous(breaks = 2001:2018) +
+           scale_y_continuous(breaks = c(200000, 250000, 300000, 350000),
+                              labels = c(200, 250, 300, 350)) +
+           theme(panel.border = element_rect(colour = "black", 
+                                              fill = NA, size = 1))
+
+ggplotly(plot2)
+```
+
+We can see that housing prices were mostly stable in the mid-2000's, with some depreciation happening after the financial crisis. The housing cost also increased overall volatility, but as a whole, we were not nearly as affected as many other regions throughout the nation. There is a distinct upturn in 2012 which has been continuous and nearly accounts for the indexed value to double over a period of 6 years. 
+
+#### Next, we will take a look at how rental prices in the area have changed over the same time period
+
+```{r echo=FALSE}
+rentData <- read.csv('rentDenver.csv')
+
+colnames(rentData) <- c('year', 'Denver', 'US', 'Colorado')
+
+rentData <- melt(rentData, id.vars='year')
+
+plot3 <- ggplot(data = rentData, aes(x = year, y = value, col = variable)) +
+            geom_line(alpha = .5) +
+            geom_point(size = 1, alpha = .5) +
+            labs(title = 'Median Rents over Time') +
+            ylab('Monthly Rent ($)') +
+            xlab('Year') +
+            scale_color_brewer(name="Region", palette = 'Set1') +
+            scale_x_continuous(breaks = 2006:2017) +
+            theme(panel.border = element_rect(colour = "black", 
+                                              fill = NA, size = 1),
+                  axis.text.x = element_text(angle = 45))
+
+ggplotly(plot3 ) 
+```
+
+As you can see, both Colorado and Denver have greatly outpaced the national growth in median rent prices. This also contributed to the overall larger problem of housing costs in Colorado; in particular, there seems to be a big shortage of affordable housing. In some broad terms, this has been an issue of growing concern throughout the community, and something I've dealt with personally. The lack of affordable housing is pushing people out of the neighborhoods they've called home, and making it difficult for low and middle class earners to keep a roof over their heads. 
+
+#### Finally, let's take a look at Wage growth in Denver, Colorado, and the US
+
+```{r echo=FALSE}
+data <- read.csv('wageData.csv')
+
+names(data) <- c('Year', 'CO Median', 'CO Mean', 'US Median', 'US Mean')
+
+wageData <- melt(data, id.vars = 'Year')
+
+plot3 <- ggplot(data = wageData, aes(x = Year, y = value, col = variable)) +
+            geom_line(alpha = .5) +
+            geom_point(size = 1, alpha = .5) +
+            labs(title = 'Median and Mean Wages Over Time') +
+            ylab('Hourly Wage ($)') +
+            xlab('Year') +
+            theme(axis.text.x = element_text(angle = 45), 
+                  panel.border = element_rect(colour = "black", 
+                                              fill = NA, size = 1)) +
+            scale_color_brewer(name="Region & Measure", 
+                               palette = 'Set1') +
+            scale_x_continuous(breaks = 2006:2018) +
+            scale_y_continuous(breaks = seq(15, 27, 2))
+
+ggplotly(plot3)
+```
+
+We can see that while Colorado and the metro area in particular both have historically had wages over the national average, but the growth doesn't seem to be comensurate with the increases housing costs. 
+
+#### Here's another look at the same data, displayed in a different manner
+
+
+```{r echo=FALSE}
+plot4 <- ggplot(data = wageData, aes(x = variable, y = value, fill = variable)) +
+  xlab('Region & Measure') +
+  geom_col(alpha = .8) +
+  scale_fill_brewer(palette = 'Set1') +
+  transition_time(Year) +
+  ylab('Hourly Wage ($)') + 
+  theme(panel.border = element_rect(colour = "black", fill = NA, size = 1)) +
+  coord_flip() +
+  labs(title = 'Changing Hourly Wages of Colorado and the US: {as.integer(frame_time)}')
+
+plot4
+```
+
+You can see that Colorado wages are growing faster than the national measures, but are not nearly keeping up with the rises in housing costs. 
+
+#### Conclusion
+
+Population growth has cause a severe rise in demand for housing throughout the Denver metro area, and this has had a massive impact on the cost of living. Wage growth has not been able to keep up, and many in Denver have struggled to maintain quality housing because of these affects, myself included. 
